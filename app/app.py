@@ -1,8 +1,10 @@
 from flask import Flask, render_template_string
 import psutil
 import datetime
+import redis
 
 app = Flask(__name__)
+cache = redis.Redis(host='redis', port=6379)
 
 HTML = """
 <!DOCTYPE html>
@@ -22,17 +24,19 @@ HTML = """
     <div class="stat"><span class="label">RAM Usage:</span> {{ ram }}%</div>
     <div class="stat"><span class="label">Disk Usage:</span> {{ disk }}%</div>
     <div class="stat"><span class="label">Uptime Since:</span> {{ uptime }}</div>
+    <div class="stat"><span class="label">Total Visits:</span> {{ visits }}</div>
 </body>
 </html>
 """
 
 @app.route("/")
 def index():
+    visits = cache.incr('visits')
     cpu = psutil.cpu_percent(interval=1)
     ram = psutil.virtual_memory().percent
     disk = psutil.disk_usage("/").percent
     uptime = datetime.datetime.fromtimestamp(psutil.boot_time()).strftime("%Y-%m-%d %H:%M:%S")
-    return render_template_string(HTML, cpu=cpu, ram=ram, disk=disk, uptime=uptime)
+    return render_template_string(HTML, cpu=cpu, ram=ram, disk=disk, uptime=uptime, visits=visits)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
